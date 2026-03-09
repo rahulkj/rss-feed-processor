@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rss-app-config
+  namespace: default
+data:
+  # Producer Configuration
+  PRODUCER_SERVER_PORT: "8081"
+  PRODUCER_SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres:5432/rssdb"
+  PRODUCER_SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+  
+  # RSS Feeds
+  RSS_POLLING_INTERVAL: "300000"
+  RSS_FEEDS: |
+    - name: bbc-news
+      url: http://feeds.bbci.co.uk/news/rss.xml
+    - name: techcrunch
+      url: https://techcrunch.com/feed/
+    - name: hacker-news
+      url: https://hnrss.org/frontpage
+
+  # Consumer Configuration
+  CONSUMER_SERVER_PORT: "8082"
+  CONSUMER_SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres:5432/rssconsumerdb"
+  CONSUMER_SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+  
+  # Shared Ollama Configuration
+  OLLAMA_BASE_URL: "http://ollama:11434"
+  OLLAMA_MODEL: "deepseek-r1"
+  OLLAMA_ENABLED: "true"
+  OLLAMA_CONNECTION_POOL_SIZE: "50"
+  OLLAMA_CONNECT_TIMEOUT: "10000"
+  OLLAMA_RESPONSE_TIMEOUT: "60000"
+  OLLAMA_BATCH_SIZE: "10"
+  OLLAMA_CACHE_ENABLED: "true"
+  OLLAMA_CACHE_TTL_MINUTES: "60"
+  
+  # Ollama Prompt Templates
+  OLLAMA_PRODUCER_PROMPT_TEMPLATE: "Analyze and provide a brief summary of the following news article. Identify key topics and sentiment: {title} - {description}"
+  OLLAMA_CONSUMER_SEARCH_PROMPT_TEMPLATE: "Based on the following news articles, identify which ones are relevant to the query: '{prompt}'. Return the IDs of relevant articles as a comma-separated list. If none are relevant, return 'none'. Articles: {articles}"

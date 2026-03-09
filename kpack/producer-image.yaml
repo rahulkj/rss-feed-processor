@@ -1,0 +1,23 @@
+apiVersion: kpack.io/v1alpha2
+kind: Image
+metadata:
+  name: rss-feed-producer
+  namespace: default
+spec:
+  tag: registry.example.com/rss-feed-producer:latest
+  builder:
+    kind: Builder
+    name: base-builder
+  source:
+    git:
+      url: https://github.com/your-org/rss-feed-producer
+      revision: main
+  cache:
+    volume:
+      size: 5Gi
+  build:
+    env:
+      - name: BP_JVM_VERSION
+        value: "17"
+      - name: BP_MAVEN_VERSION
+        value: "3.9"

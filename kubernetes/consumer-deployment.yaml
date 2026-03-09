@@ -1,0 +1,133 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rss-feed-consumer
+  namespace: default
+  labels:
+    app: rss-feed-consumer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rss-feed-consumer
+  template:
+    metadata:
+      labels:
+        app: rss-feed-consumer
+    spec:
+      containers:
+        - name: consumer
+          image: registry.example.com/rss-feed-consumer:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8082
+              name: http
+          env:
+            - name: SERVER_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: rss-app-config
+                  key: CONSUMER_SERVER_PORT
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: rss-app-config
+                  key: CONSUMER_SPRING_DATASOURCE_URL
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: rss-app-secrets
+                  key: SPRING_DATASOURCE_USERNAME
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rss-app-secrets
+                  key: SPRING_DATASOURCE_PASSWORD
+            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: rss-app-config
+                  key: CONSUMER_SPRING_KAFKA_BOOTSTRAP_SERVERS
+            - name: OLLAMA_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: rss-app-config
+                  key: OLLAMA_BASE_URL
+            - name: OLLAMA_MODEL
+              valueFrom:
+                configMapKeyRef:
+                  name: rss-app-config
+                  key: OLLAMA_MODEL
+            - name: OLLAMA_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: rss-app-config
+                  key: OLLAMA_ENABLED
+            - name: OLLAMA_CONNECTION_POOL_SIZE
+              valueFrom:
+                configMapKeyRef:
+                  name: rss-app-config
+                  key: OLLAMA_CONNECTION_POOL_SIZE
+            - name: OLLAMA_CONNECT_TIMEOUT
+              valueFrom:
+                configMapKeyRef:
+                  name: rss-app-config
+                  key: OLLAMA_CONNECT_TIMEOUT
+            - name: OLLAMA_RESPONSE_TIMEOUT
+              valueFrom:
+                configMapKeyRef:
+                  name: rss-app-config
+                  key: OLLAMA_RESPONSE_TIMEOUT
+            - name: OLLAMA_BATCH_SIZE
+              valueFrom:
+                configMapKeyRef:
+                  name: rss-app-config
+                  key: OLLAMA_BATCH_SIZE
+            - name: OLLAMA_CACHE_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: rss-app-config
+                  key: OLLAMA_CACHE_ENABLED
+            - name: OLLAMA_CACHE_TTL_MINUTES
+              valueFrom:
+                configMapKeyRef:
+                  name: rss-app-config
+                  key: OLLAMA_CACHE_TTL_MINUTES
+            - name: OLLAMA_SEARCH_PROMPT_TEMPLATE
+              valueFrom:
+                configMapKeyRef:
+                  name: rss-app-config
+                  key: OLLAMA_CONSUMER_SEARCH_PROMPT_TEMPLATE
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8082
+            initialDelaySeconds: 60
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8082
+            initialDelaySeconds: 30
+            periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rss-feed-consumer
+  namespace: default
+spec:
+  selector:
+    app: rss-feed-consumer
+  ports:
+    - port: 8082
+      targetPort: 8082
+      name: http
+  type: ClusterIP

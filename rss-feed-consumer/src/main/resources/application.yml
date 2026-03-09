@@ -1,0 +1,45 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: rss-feed-consumer
+  
+  datasource:
+    url: jdbc:postgresql://localhost:5432/rssconsumerdb
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: rss-consumer-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+
+rss:
+  events:
+    topic: rss-events
+
+ollama:
+  base-url: http://172.16.0.53:11434
+  model: deepseek-r1
+  enabled: true
+  search-prompt-template: "Based on the following news articles, identify which ones are relevant to the query: '{prompt}'. Return the IDs of relevant articles as a comma-separated list. If none are relevant, return 'none'. Articles: {articles}"
+
+logging:
+  level:
+    com.example.rssconsumer: DEBUG
+    org.springframework.kafka: INFO

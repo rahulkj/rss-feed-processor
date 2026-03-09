@@ -1,0 +1,50 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: rss-feed-producer
+  
+  datasource:
+    url: jdbc:postgresql://localhost:5432/rssdb
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+
+rss:
+  polling:
+    interval: 300000
+  feeds:
+    - name: bbc-news
+      url: http://feeds.bbci.co.uk/news/rss.xml
+    - name: techcrunch
+      url: https://techcrunch.com/feed/
+    - name: hacker-news
+      url: https://hnrss.org/frontpage
+
+ollama:
+  base-url: http://172.16.0.53:11434
+  model: deepseek-r1
+  enabled: true
+  prompt-template: "Analyze and provide a brief summary of the following news article. Identify key topics and sentiment: {title} - {description}"
+
+logging:
+  level:
+    com.example.rssproducer: DEBUG
+    org.springframework.kafka: INFO

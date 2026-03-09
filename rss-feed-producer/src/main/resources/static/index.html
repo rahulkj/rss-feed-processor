@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RSS Feed Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+        
+        .card h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+        }
+        
+        input[type="text"], 
+        input[type="url"] {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+        
+        input[type="text"]:focus, 
+        input[type="url"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .btn {
+            padding: 14px 28px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 100%;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+            margin-right: 10px;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+            padding: 8px 16px;
+            font-size: 0.875rem;
+        }
+        
+        .feed-list {
+            list-style: none;
+        }
+        
+        .feed-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            border-bottom: 1px solid #e0e0e0;
+            transition: background 0.2s;
+        }
+        
+        .feed-item:last-child {
+            border-bottom: none;
+        }
+        
+        .feed-item:hover {
+            background: #f8f9fa;
+        }
+        
+        .feed-info {
+            flex: 1;
+        }
+        
+        .feed-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        
+        .feed-url {
+            color: #666;
+            font-size: 0.875rem;
+            word-break: break-all;
+        }
+        
+        .feed-actions {
+            display: flex;
+            gap: 8px;
+            margin-left: 16px;
+        }
+        
+        .status {
+            padding: 10px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            display: block;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            display: block;
+        }
+        
+        .status.loading {
+            background: #cce5ff;
+            color: #004085;
+            display: block;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📰 RSS Feed Manager</h1>
+        
+        <div class="card">
+            <h2>Add New Feed</h2>
+            <div id="status" class="status"></div>
+            <form id="feedForm">
+                <div class="form-group">
+                    <label for="name">Feed Name</label>
+                    <input type="text" id="name" name="name" placeholder="e.g., bbc-news, techcrunch" required>
+                </div>
+                <div class="form-group">
+                    <label for="url">Feed URL</label>
+                    <input type="url" id="url" name="url" placeholder="e.g., https://example.com/feed.xml" required>
+                </div>
+                <div class="form-group">
+                    <label for="description">Description (Optional)</label>
+                    <input type="text" id="description" name="description" placeholder="Brief description of the feed">
+                </div>
+                <button type="submit" class="btn btn-primary" id="submitBtn">Add Feed</button>
+            </form>
+        </div>
+        
+        <div class="card">
+            <h2>Active Feeds</h2>
+            <ul class="feed-list" id="feedList">
+                <li class="empty-state">Loading feeds...</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '';
+        
+        function showStatus(message, type, showSpinner = false) {
+            const status = document.getElementById('status');
+            const spinner = showSpinner ? '<span class="loading-spinner"></span>' : '';
+            status.innerHTML = spinner + message;
+            status.className = 'status ' + type;
+            status.style.display = 'block';
+            
+            if (!showSpinner) {
+                setTimeout(() => {
+                    status.style.display = 'none';
+                }, 5000);
+            }
+        }
+        
+        async function loadFeeds() {
+            try {
+                const response = await fetch('/api/feeds');
+                const feeds = await response.json();
+                const feedList = document.getElementById('feedList');
+                
+                if (feeds.length === 0) {
+                    feedList.innerHTML = '<li class="empty-state">No feeds added yet. Add your first feed above!</li>';
+                    return;
+                }
+                
+                feedList.innerHTML = feeds.map(feed => `
+                    <li class="feed-item">
+                        <div class="feed-info">
+                            <div class="feed-name">${feed.name} ${feed.active ? '✅' : '⏸️'}</div>
+                            <div class="feed-url">${feed.url}</div>
+                            ${feed.description ? `<div class="feed-url">${feed.description}</div>` : ''}
+                        </div>
+                        <div class="feed-actions">
+                            <button class="btn btn-secondary" onclick="pollFeed(${feed.id})">Poll</button>
+                            <button class="btn btn-secondary" onclick="toggleFeed(${feed.id})">${feed.active ? 'Pause' : 'Resume'}</button>
+                            <button class="btn btn-danger" onclick="deleteFeed(${feed.id})">Delete</button>
+                        </div>
+                    </li>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading feeds:', error);
+                document.getElementById('feedList').innerHTML = '<li class="empty-state">Error loading feeds</li>';
+            }
+        }
+        
+        document.getElementById('feedForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="loading-spinner"></span> Adding...';
+            
+            const formData = {
+                name: document.getElementById('name').value.trim(),
+                url: document.getElementById('url').value.trim(),
+                description: document.getElementById('description').value.trim()
+            };
+            
+            try {
+                const response = await fetch('/api/feeds', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                if (response.ok) {
+                    showStatus('Feed added successfully!', 'success');
+                    document.getElementById('feedForm').reset();
+                    loadFeeds();
+                } else {
+                    const error = await response.text();
+                    showStatus('Error: ' + error, 'error');
+                }
+            } catch (error) {
+                showStatus('Error: ' + error.message, 'error');
+            }
+            
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Add Feed';
+        });
+        
+        async function pollFeed(id) {
+            showStatus('Polling feed...', 'loading', true);
+            try {
+                await fetch(`/api/feeds/${id}/poll`, { method: 'POST' });
+                showStatus('Polling completed!', 'success');
+            } catch (error) {
+                showStatus('Error polling feed: ' + error.message, 'error');
+            }
+        }
+        
+        async function toggleFeed(id) {
+            try {
+                await fetch(`/api/feeds/${id}/toggle`, { method: 'POST' });
+                loadFeeds();
+            } catch (error) {
+                showStatus('Error toggling feed: ' + error.message, 'error');
+            }
+        }
+        
+        async function deleteFeed(id) {
+            if (!confirm('Are you sure you want to delete this feed?')) return;
+            
+            try {
+                await fetch(`/api/feeds/${id}`, { method: 'DELETE' });
+                showStatus('Feed deleted successfully!', 'success');
+                loadFeeds();
+            } catch (error) {
+                showStatus('Error deleting feed: ' + error.message, 'error');
+            }
+        }
+        
+        loadFeeds();
+    </script>
+</body>
+</html>
