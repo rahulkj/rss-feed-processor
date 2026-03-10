@@ -48,10 +48,19 @@ public class OllamaService {
             String articlesText = buildArticlesText(articles);
             String searchPrompt = buildSearchPrompt(prompt, articlesText);
             
+            log.debug("Querying Ollama with prompt: {}... (truncated)", searchPrompt.substring(0, Math.min(100, searchPrompt.length())));
+            
             String response = queryOllamaWithCache(searchPrompt);
+            
+            if (response == null || response.isEmpty()) {
+                log.warn("Ollama returned empty response");
+                return Collections.emptyList();
+            }
+            
+            log.debug("Ollama response: {}", response);
             return parseOllamaResponse(response, articles);
         } catch (Exception e) {
-            log.error("Failed to search with Ollama: {}", e.getMessage());
+            log.error("Failed to search with Ollama: {}", e.getMessage(), e);
             return articles.stream().map(NewsArticle::getId).collect(Collectors.toList());
         }
     }
@@ -94,7 +103,7 @@ public class OllamaService {
         }
         
         try {
-            String response = queryOllamaAsync(prompt).block(Duration.ofSeconds(60));
+            String response = queryOllamaAsync(prompt).block(Duration.ofMillis(ollamaConfig.getResponseTimeout() * 2));
             if (response != null && ollamaConfig.isCacheEnabled()) {
                 responseCache.put(cacheKey, new CachedResponse(
                         response, 
@@ -103,7 +112,7 @@ public class OllamaService {
             }
             return response;
         } catch (Exception e) {
-            log.error("Failed to query Ollama: {}", e.getMessage());
+            log.error("Failed to query Ollama: {}", e.getMessage(), e);
             return null;
         }
     }
@@ -115,9 +124,11 @@ public class OllamaService {
         requestBody.put("stream", false);
         
         return webClient.post()
+                .uri("/api/generate")
                 .bodyValue(requestBody)
                 .retrieve()
                 .bodyToMono(Map.class)
+                .doOnNext(response -> log.debug("Ollama response: {}", response))
                 .map(response -> (String) response.getOrDefault("response", ""))
                 .timeout(Duration.ofMillis(ollamaConfig.getResponseTimeout()));
     }

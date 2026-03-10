@@ -16,7 +16,7 @@ public class OllamaConfig {
     private String baseUrl = "http://localhost:11434";
     
     @Builder.Default
-    private String model = "deepseek";
+    private String model = "deepseek-r1:latest";
     
     @Builder.Default
     private boolean enabled = true;
@@ -25,13 +25,13 @@ public class OllamaConfig {
     private String searchPromptTemplate = "Find relevant articles: {prompt}. Articles: {articles}";
     
     @Builder.Default
-    private int connectionPoolSize = 50;
+    private int connectionPoolSize = 100;
     
     @Builder.Default
-    private long connectTimeout = 10000;
+    private long connectTimeout = 30000;
     
     @Builder.Default
-    private long responseTimeout = 60000;
+    private long responseTimeout = 180000;
     
     @Builder.Default
     private int batchSize = 10;

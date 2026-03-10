@@ -20,7 +20,7 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
   
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: node-6.lab.int:9092
     consumer:
       group-id: rss-consumer-group
       auto-offset-reset: earliest
@@ -35,8 +35,9 @@ rss:
 
 ollama:
   base-url: http://172.16.0.53:11434
-  model: deepseek-r1
+  model: deepseek-r1:latest
   enabled: true
+  response-timeout: 180000
   search-prompt-template: "Based on the following news articles, identify which ones are relevant to the query: '{prompt}'. Return the IDs of relevant articles as a comma-separated list. If none are relevant, return 'none'. Articles: {articles}"
 
 logging:

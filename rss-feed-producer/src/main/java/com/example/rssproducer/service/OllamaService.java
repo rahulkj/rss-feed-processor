@@ -2,14 +2,12 @@ package com.example.rssproducer.service;
 
 import com.example.rssproducer.config.OllamaConfig;
 import com.example.rssproducer.dto.RssEventDto;
+import com.example.rssproducer.entity.RssFeedEntry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
-import jakarta.annotation.PostConstruct;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
@@ -27,13 +25,6 @@ public class OllamaService {
     private final WebClient webClient;
     
     private final Map<String, CachedResponse> responseCache = new ConcurrentHashMap<>();
-    
-    @PostConstruct
-    public void init() {
-        log.info("Ollama Service initialized with config: baseUrl={}, model={}, batchSize={}, cacheEnabled={}",
-                ollamaConfig.getBaseUrl(), ollamaConfig.getModel(), 
-                ollamaConfig.getBatchSize(), ollamaConfig.isCacheEnabled());
-    }
     
     public List<String> enrichContentBatch(List<RssEventDto> entries) {
         if (!ollamaConfig.isEnabled()) {
@@ -54,61 +45,21 @@ public class OllamaService {
             return entries.stream().map(e -> (String) null).collect(Collectors.toList());
         }
         
-        return Flux.fromIterable(entriesToEnrich)
-                .flatMap(this::enrichWithCache, ollamaConfig.getConnectionPoolSize())
-                .subscribeOn(Schedulers.boundedElastic())
-                .collectList()
-                .block(Duration.ofSeconds(60));
-    }
-    
-    private Mono<String> enrichWithCache(RssEventDto entry) {
-        String cacheKey = generateCacheKey(entry.getTitle(), entry.getDescription());
-        
-        if (ollamaConfig.isCacheEnabled()) {
-            CachedResponse cached = responseCache.get(cacheKey);
-            if (cached != null && !cached.isExpired()) {
-                log.debug("Cache hit for: {}", entry.getTitle());
-                return Mono.just(cached.getResponse());
-            }
+        List<String> results = new ArrayList<>();
+        for (RssEventDto entry : entriesToEnrich) {
+            String enriched = enrichSingleDto(entry);
+            results.add(enriched);
         }
         
-        return enrichSingle(entry)
-                .doOnNext(response -> {
-                    if (ollamaConfig.isCacheEnabled()) {
-                        responseCache.put(cacheKey, new CachedResponse(
-                                response, 
-                                Duration.ofMinutes(ollamaConfig.getCacheTtlMinutes())
-                        ));
-                    }
-                })
-                .onErrorResume(e -> {
-                    log.error("Failed to enrich content: {}", e.getMessage());
-                    return Mono.empty();
-                });
-    }
-    
-    private Mono<String> enrichSingle(RssEventDto entry) {
-        String prompt = buildPrompt(entry.getTitle(), entry.getDescription());
+        List<String> allResults = entries.stream().map(e -> (String) null).collect(Collectors.toList());
+        AtomicInteger idx = new AtomicInteger(0);
+        entries.forEach(entry -> {
+            if (shouldEnrich(entry)) {
+                allResults.set(entries.indexOf(entry), results.get(idx.getAndIncrement()));
+            }
+        });
         
-        Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("model", ollamaConfig.getModel());
-        requestBody.put("prompt", prompt);
-        requestBody.put("stream", false);
-        
-        return webClient.post()
-                .bodyValue(requestBody)
-                .retrieve()
-                .bodyToMono(Map.class)
-                .map(response -> (String) response.getOrDefault("response", ""))
-                .timeout(Duration.ofMillis(ollamaConfig.getResponseTimeout()))
-                .doOnNext(response -> log.debug("Enriched: {}", entry.getTitle()));
-    }
-    
-    private String buildPrompt(String title, String description) {
-        String template = ollamaConfig.getPromptTemplate();
-        return template
-                .replace("{title}", title != null ? title : "")
-                .replace("{description}", description != null ? description : "");
+        return allResults;
     }
     
     private boolean shouldEnrich(RssEventDto entry) {
@@ -131,6 +82,63 @@ public class OllamaService {
         }
         
         return title.length() > 30;
+    }
+    
+    public String enrichSingle(RssFeedEntry entry) {
+        RssEventDto dto = RssEventDto.builder()
+                .title(entry.getTitle())
+                .description(entry.getDescription())
+                .build();
+        
+        return enrichSingleDto(dto);
+    }
+    
+    private String enrichSingleDto(RssEventDto entry) {
+        String cacheKey = generateCacheKey(entry.getTitle(), entry.getDescription());
+        
+        if (ollamaConfig.isCacheEnabled()) {
+            CachedResponse cached = responseCache.get(cacheKey);
+            if (cached != null && !cached.isExpired()) {
+                log.debug("Cache hit for: {}", entry.getTitle());
+                return cached.getResponse();
+            }
+        }
+        
+        String response = enrichSingleAsync(entry)
+                .block(Duration.ofMillis(ollamaConfig.getResponseTimeout()));
+        
+        if (response != null && ollamaConfig.isCacheEnabled()) {
+            responseCache.put(cacheKey, new CachedResponse(
+                    response, 
+                    Duration.ofMinutes(ollamaConfig.getCacheTtlMinutes())
+            ));
+        }
+        
+        return response;
+    }
+    
+    private Mono<String> enrichSingleAsync(RssEventDto entry) {
+        String prompt = buildPrompt(entry.getTitle(), entry.getDescription());
+        
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("model", ollamaConfig.getModel());
+        requestBody.put("prompt", prompt);
+        requestBody.put("stream", false);
+        
+        return webClient.post()
+                .uri("/api/generate")
+                .bodyValue(requestBody)
+                .retrieve()
+                .bodyToMono(Map.class)
+                .map(response -> (String) response.getOrDefault("response", ""))
+                .timeout(Duration.ofMillis(ollamaConfig.getResponseTimeout()));
+    }
+    
+    private String buildPrompt(String title, String description) {
+        String template = ollamaConfig.getPromptTemplate();
+        return template
+                .replace("{title}", title != null ? title : "")
+                .replace("{description}", description != null ? description : "");
     }
     
     private String generateCacheKey(String title, String description) {
@@ -161,10 +169,6 @@ public class OllamaService {
             log.warn("Ollama is not available: {}", e.getMessage());
             return false;
         }
-    }
-    
-    public int getCacheSize() {
-        return responseCache.size();
     }
     
     public void clearCache() {

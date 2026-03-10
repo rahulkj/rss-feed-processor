@@ -16,7 +16,7 @@ public class WebClientConfig {
     public ConnectionProvider connectionProvider(OllamaConfig ollamaConfig) {
         return ConnectionProvider.builder("ollama-pool")
                 .maxConnections(ollamaConfig.getConnectionPoolSize())
-                .pendingAcquireTimeout(Duration.ofMillis(5000))
+                .pendingAcquireTimeout(Duration.ofMillis(30000))
                 .pendingAcquireMaxCount(-1)
                 .maxIdleTime(Duration.ofSeconds(30))
                 .build();

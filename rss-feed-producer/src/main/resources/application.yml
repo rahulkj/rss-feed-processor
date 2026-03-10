@@ -20,7 +20,7 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
   
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: node-6.lab.int:9092
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
@@ -35,12 +35,12 @@ rss:
       url: http://feeds.bbci.co.uk/news/rss.xml
     - name: techcrunch
       url: https://techcrunch.com/feed/
-    - name: hacker-news
-      url: https://hnrss.org/frontpage
+    - name: crn-news
+      url: https://www.crn.com/news/rss.xml
 
 ollama:
-  base-url: http://172.16.0.53:11434
-  model: deepseek-r1
+  base-url: http://nvidia.lab.int:11434
+  model: deepseek-r1:latest
   enabled: true
   prompt-template: "Analyze and provide a brief summary of the following news article. Identify key topics and sentiment: {title} - {description}"
 
